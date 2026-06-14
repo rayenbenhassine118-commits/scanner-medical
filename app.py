@@ -16,6 +16,10 @@ def charger_modele_medical():
 
 model = charger_modele_medical()
 
+# ⚠️ ÉTAPE À PERSONNALISER : Remplace ces noms par les vraies maladies de ton projet !
+# L'ordre doit correspondre exactement à l'ordre de tes dossiers d'entraînement.
+classes_medicales = ['Normal', 'Pneumonie', 'Tumeur Détectée', 'Fracture']
+
 # 3. Zone de téléchargement du scanner
 fichier_upload = st.file_uploader("Sélectionnez une image médicale (png, jpg, jpeg)...", type=["jpg", "jpeg", "png"])
 
@@ -28,7 +32,7 @@ if fichier_upload is not None:
         # Redimensionnement standard (150x150)
         image_redimensionnee = image.resize((150, 150))
         
-        # Conversion en tableau de pixels et normalisation (Option B)
+        # Conversion en tableau de pixels et normalisation standard (0 à 1)
         img_array = tf.keras.utils.img_to_array(image_redimensionnee)
         img_array = img_array / 255.0
         img_array = tf.expand_dims(img_array, 0)
@@ -36,24 +40,18 @@ if fichier_upload is not None:
         # Calcul des prédictions brutes du modèle
         predictions_brutes = model.predict(img_array)
         
-        # Application automatique du Softmax pour obtenir des probabilités
+        # Application automatique du Softmax pour obtenir des probabilités propres
         scores_probabilites = tf.nn.softmax(predictions_brutes[0]).numpy()
         
         # Nombre exact de sorties détectées par ton modèle
         nb_classes_detectees = len(scores_probabilites)
         
-        # Génération automatique des noms de classes pour éviter l'IndexError
-        # (Tu pourras renommer 'Classe 0', 'Classe 1' une fois que tu verras laquelle s'active)
-        classes_medicales = [f"Pathologie (Type {i})" for i in range(nb_classes_detectees)]
+        # Sécurité IndexError : Si ta liste 'classes_medicales' ne fait pas la bonne taille,
+        # le code génère automatiquement des étiquettes pour éviter le crash.
+        if len(classes_medicales) != nb_classes_detectees:
+            classes_medicales = [f"Pathologie (Type {i})" for i in range(nb_classes_detectees)]
         
-        # Si le modèle a exactement 2 classes, on peut supposer :
-        if nb_classes_detectees == 2:
-            classes_medicales = ['Normal (Sain)', 'Anomalie Détectée']
-        # Si le modèle a exactement 4 classes (comme prévu au départ) :
-        elif nb_classes_detectees == 4:
-            classes_medicales = ['Normal', 'Pneumonie', 'Tumeur Détectée', 'Fracture']
-            
-        # Extraction de la classe dominante
+        # Extraction du gagnant
         index_gagnant = np.argmax(scores_probabilites)
         pathologie_detectee = classes_medicales[index_gagnant]
         confiance = scores_probabilites[index_gagnant] * 100
@@ -65,7 +63,7 @@ if fichier_upload is not None:
     st.success(f"Diagnostic détecté : **{pathologie_detectee}**")
     st.info(f"Indice de certitude globale : **{confiance:.2f}%**")
     
-    # 📊 Tableau dynamique sécurisé (ne causera plus jamais de IndexError)
+    # 📊 Tableau de bord avec barres de progression
     st.subheader("📊 Répartition des probabilités")
     for i in range(nb_classes_detectees):
         valeur_pourcentage = scores_probabilites[i] * 100
