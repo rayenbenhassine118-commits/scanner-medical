@@ -17,7 +17,7 @@ def charger_modele_medical():
 
 model = charger_modele_medical()
 
-# Liste des pathologies (À modifier selon les classes de ton modèle)
+# Liste des pathologies (À modifier selon les classes exactes de votre modèle)
 classes_medicales = ['Normal', 'Pneumonie', 'Tumeur Détectée', 'Fracture']
 
 # 3. Barre latérale sécurisée pour la clé API Gemini
@@ -34,15 +34,33 @@ if fichier_upload is not None:
     
     # --- PARTIE 1 : Prédiction du modèle d'imagerie ---
     with st.spinner("Analyse du scanner par l'IA..."):
-        # 🟢 CORRECTION DE LA TAILLE : Passage à (150, 150)
+        # Redimensionnement à la bonne taille (150x150)
         image_redimensionnee = image.resize((150, 150))
         img_array = tf.keras.utils.img_to_array(image_redimensionnee)
+        
+        # 🟢 CORRECTIF DE NORMALISATION : Convertit les pixels de [0-255] à [0-1]
+        # Cela évite que le modèle sature et affiche toujours la même prédiction
+        img_array = img_array / 255.0
+        
+        # Ajout de la dimension batch (1, 150, 150, 3)
         img_array = tf.expand_dims(img_array, 0)
         
+        # Exécution de la prédiction
         predictions = model.predict(img_array)
+        
+        # Extraction de la classe
         index_prediction = np.argmax(predictions[0])
         pathologie_detectee = classes_medicales[index_prediction]
-        confiance = 100 * np.max(tf.nn.softmax(predictions[0]))
+        
+        # Calcul dynamique de l'indice de confiance
+        confiance = 100 * np.max(predictions[0])
+        
+        # Sécurité : Si le modèle ne sort pas de probabilités brutes (pas de couche Softmax finale)
+        if confiance < 1.0: 
+            scores_softmax = tf.nn.softmax(predictions[0])
+            index_prediction = np.argmax(scores_softmax)
+            pathologie_detectee = classes_medicales[index_prediction]
+            confiance = 100 * np.max(scores_softmax)
 
     # Affichage du résultat de l'imagerie
     st.success(f"🔬 Analyse d'imagerie : **{pathologie_detectee}**")
