@@ -10,17 +10,17 @@ st.set_page_config(page_title="Scanner Médical IA", page_icon="🩻", layout="c
 st.title("🩻 Analyse de Scanners Médicaux par IA")
 st.write("Cette application utilise un modèle de Deep Learning pour analyser les images médicales et l'IA Gemini pour générer un pré-rapport.")
 
-# 2. Chargement sécurisé du modèle (Nom exact vérifié sur votre capture)
+# 2. Chargement sécurisé du modèle
 @st.cache_resource
 def charger_modele_medical():
     return tf.keras.models.load_model('modele_medical.keras', compile=False)
 
 model = charger_modele_medical()
 
-# Liste des pathologies (À modifier selon les classes de votre modèle)
+# Liste des pathologies (À modifier selon les classes de ton modèle)
 classes_medicales = ['Normal', 'Pneumonie', 'Tumeur Détectée', 'Fracture']
 
-# 3. Barre latérale sécurisée pour la clé API (Évite le blocage de sécurité GitHub à la ligne 44)
+# 3. Barre latérale sécurisée pour la clé API Gemini
 st.sidebar.header("🔑 Configuration Sécurisée")
 api_key = st.sidebar.text_input("Entrez votre clé API Google Gemini :", type="password")
 
@@ -34,7 +34,8 @@ if fichier_upload is not None:
     
     # --- PARTIE 1 : Prédiction du modèle d'imagerie ---
     with st.spinner("Analyse du scanner par l'IA..."):
-        image_redimensionnee = image.resize((180, 180))
+        # Correctif de dimensionnement : Passage à (224, 224)
+        image_redimensionnee = image.resize((224, 224))
         img_array = tf.keras.utils.img_to_array(image_redimensionnee)
         img_array = tf.expand_dims(img_array, 0)
         
@@ -51,7 +52,6 @@ if fichier_upload is not None:
     if api_key:
         with st.spinner("Génération du compte-rendu par Gemini..."):
             try:
-                # Configuration dynamique avec la clé fournie de manière sécurisée
                 genai.configure(api_key=api_key)
                 gemini_model = genai.GenerativeModel('gemini-pro')
                 
