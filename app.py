@@ -1,71 +1,82 @@
 import streamlit as st
 import tensorflow as tf
+from PIL import Image, ImageOps
 import numpy as np
-from PIL import Image
+import time
 
-# 1. Configuration de la page
-st.set_page_config(page_title="Scanner Médical IA", page_icon="🩻", layout="centered")
+# --- 1. CONFIGURATION VISUELLE DE LA PAGE ---
+st.set_page_config(
+    page_title="Scanner Radiologique IA",
+    page_icon="🩻",
+    layout="centered"
+)
 
-st.title("🩻 Analyse de Scanners Médicaux par IA")
-st.write("Téléchargez une image de scanner ou de radiographie pour obtenir un diagnostic automatique instantané.")
+# Style CSS pour forcer le look "Écran de contrôle médical"
+st.markdown("""
+    <style>
+    .main { background-color: #0d1117; color: #ffffff; }
+    h1 { color: #58a6ff !important; font-family: 'Courier New', Courier, monospace; text-align: center; }
+    .stAlert { background-color: #161b22 !important; border: 1px solid #30363d !important; }
+    </style>
+""", unsafe_allow_html=True)
 
-# 2. Chargement du modèle Keras
+
+# --- 2. PAGE PRINCIPALE : SCANNER RADIOLOGIQUE ---
+st.markdown("<h1>🩻 CENTRE DE RADIOLOGIE IA</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #8b949e;'>Système autonome d'analyse pulmonaire par Réseau de Neurones Convolutif</p>", unsafe_allow_html=True)
+st.write("---")
+
+# Chargement sécurisé du modèle IA local
 @st.cache_resource
-def charger_modele_medical():
-    return tf.keras.models.load_model('modele_medical.keras', compile=False)
+def charger_intelligence():
+    return tf.keras.models.load_model("modele_medical.keras")
 
-model = charger_modele_medical()
+try:
+    modele = charger_intelligence()
+except Exception as e:
+    st.error("⚠️ Fichier 'modele_medical.keras' introuvable dans le dossier. Vérifie son emplacement.")
+    st.stop()
 
-# ⚠️ ÉTAPE À PERSONNALISER : Remplace ces noms par les vraies maladies de ton projet !
-# L'ordre doit correspondre exactement à l'ordre de tes dossiers d'entraînement.
-classes_medicales = ['Normal', 'Pneumonie', 'Tumeur Détectée', 'Fracture']
+# Formulaire d'upload de la radio
+st.subheader("📥 Dépôt de la radiographie thoracique")
+image_chargee = st.file_uploader("Glissez-déposez le cliché X-Ray du patient (Format JPG ou PNG)...", type=["jpg", "png", "jpeg"])
 
-# 3. Zone de téléchargement du scanner
-fichier_upload = st.file_uploader("Sélectionnez une image médicale (png, jpg, jpeg)...", type=["jpg", "jpeg", "png"])
-
-# 4. Traitement mathématique et prédiction
-if fichier_upload is not None:
-    image = Image.open(fichier_upload)
-    st.image(image, caption="Scanner à analyser", use_container_width=True)
+if image_chargee is not None:
+    radio = Image.open(image_chargee)
+    st.image(radio, caption="Cliché radiologique chargé.", use_container_width=True)
+    st.write("---")
     
-    with st.spinner("Analyse des structures de l'image..."):
-        # Redimensionnement standard (150x150)
-        image_redimensionnee = image.resize((150, 150))
+    # Déclencheur du scan
+    if st.button("🚀 LANCER L'ANALYSE DU CLICHÉ", use_container_width=True):
+        progress_text = "🔬 Analyse de la structure pulmonaire en cours. Veuillez patienter..."
+        barre_chargement = st.progress(0, text=progress_text)
         
-        # Conversion en tableau de pixels et normalisation standard (0 à 1)
-        img_array = tf.keras.utils.img_to_array(image_redimensionnee)
-        img_array = img_array / 255.0
-        img_array = tf.expand_dims(img_array, 0)
+        # Faux balayage pour l'effet technologique
+        for pourcentage in range(0, 101, 20):
+            time.sleep(0.3)
+            barre_chargement.progress(pourcentage, text=progress_text)
         
-        # Calcul des prédictions brutes du modèle
-        predictions_brutes = model.predict(img_array)
+        # Formatage de l'image pour le modèle
+        taille_ia = (150, 150)
+        radio_preparee = ImageOps.fit(radio, taille_ia).convert('RGB')
         
-        # Application automatique du Softmax pour obtenir des probabilités propres
-        scores_probabilites = tf.nn.softmax(predictions_brutes[0]).numpy()
+        tableau_pixel = np.asarray(radio_preparee)
+        batch_image = np.expand_dims(tableau_pixel, axis=0)
         
-        # Nombre exact de sorties détectées par ton modèle
-        nb_classes_detectees = len(scores_probabilites)
+        # Prédiction finale par ton modèle d'images
+        prediction = modele.predict(batch_image)[0][0]
+        barre_chargement.empty()
         
-        # Sécurité IndexError : Si ta liste 'classes_medicales' ne fait pas la bonne taille,
-        # le code génère automatiquement des étiquettes pour éviter le crash.
-        if len(classes_medicales) != nb_classes_detectees:
-            classes_medicales = [f"Pathologie (Type {i})" for i in range(nb_classes_detectees)]
+        st.subheader("📋 Rapport d'analyse automatique")
         
-        # Extraction du gagnant
-        index_gagnant = np.argmax(scores_probabilites)
-        pathologie_detectee = classes_medicales[index_gagnant]
-        confiance = scores_probabilites[index_gagnant] * 100
-
-    # --- AFFICHAGE DES RÉSULTATS ---
-    st.markdown("---")
-    st.subheader("🔬 Résultats de l'analyse automatique")
-    
-    st.success(f"Diagnostic détecté : **{pathologie_detectee}**")
-    st.info(f"Indice de certitude globale : **{confiance:.2f}%**")
-    
-    # 📊 Tableau de bord avec barres de progression
-    st.subheader("📊 Répartition des probabilités")
-    for i in range(nb_classes_detectees):
-        valeur_pourcentage = scores_probabilites[i] * 100
-        st.write(f"- **{classes_medicales[i]}** : `{valeur_pourcentage:.2f}%`")
-        st.progress(float(scores_probabilites[i]))
+        if prediction >= 0.5:
+            confiance = prediction * 100
+            st.error(f"🚨 **ANOMALIE DÉTECTÉE :** Suspicion élevée de **PNEUMONIE**.")
+            st.info(f"📈 Indice de certitude de l'algorithme : **{confiance:.2f}%**")
+            st.warning("⚠️ *Note : Ce résultat est généré par une IA. Une validation par un radiologue humain est obligatoire.*")
+        else:
+            confiance = (1 - prediction) * 100
+            st.success(f"✅ **CLICHÉ NORMAL :** Les champs pulmonaires apparaissent sains et dégagés.")
+            st.info(f"📈 Indice de certitude de l'algorithme : **{confiance:.2f}%**")
+else:
+    st.info("💡 En attente d'un cliché radiologique pour démarrer le protocole de détection.")
