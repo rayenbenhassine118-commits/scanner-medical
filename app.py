@@ -34,8 +34,8 @@ if fichier_upload is not None:
     
     # --- PARTIE 1 : Prédiction du modèle d'imagerie ---
     with st.spinner("Analyse du scanner par l'IA..."):
-        # Correctif de dimensionnement : Passage à (224, 224)
-        image_redimensionnee = image.resize((224, 224))
+        # 🟢 CORRECTION DE LA TAILLE : Passage à (150, 150)
+        image_redimensionnee = image.resize((150, 150))
         img_array = tf.keras.utils.img_to_array(image_redimensionnee)
         img_array = tf.expand_dims(img_array, 0)
         
